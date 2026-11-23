@@ -1,0 +1,14 @@
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ShieldCheck, Package, ShoppingBag } from 'lucide-react';
+import { api, imageFor, money } from '../api';
+import { useAuth } from '../context/AuthContext';
+export default function ListingDetail({ onAuth }) {
+  const { id } = useParams(); const [listing,setListing]=useState(null); const [error,setError]=useState(''); const [busy,setBusy]=useState(false); const {user}=useAuth(); const navigate=useNavigate();
+  useEffect(()=>{api(`/listings/${id}`).then(d=>setListing(d.listing)).catch(e=>setError(e.message));},[id]);
+  async function buy(){ if(!user){onAuth('login');return;} setBusy(true);setError('');try{const d=await api(`/orders/${id}/purchase`,{method:'POST',body:JSON.stringify({})});navigate('/dashboard',{state:{purchase:d.order.id}});}catch(e){setError(e.message);}finally{setBusy(false);}}
+  if(error && !listing) return <main className="page-shell"><div className="notice error">{error}</div><Link to="/" className="back-link">Back to discover</Link></main>;
+  if(!listing) return <div className="loading-state">Loading this find…</div>;
+  const first=listing.items?.[0];
+  return <main className="page-shell"><Link to="/" className="back-link"><ArrowLeft size={16}/> Back to discover</Link><div className="detail-layout"><div className="detail-gallery"><img className="detail-image" src={imageFor(first)} alt={listing.title}/>{listing.items?.length>1&&<div className="bundle-thumbs">{listing.items.map(i=><div key={i.id}><img src={imageFor(i)} alt={i.title}/><span>{i.title}</span></div>)}</div>}</div><div className="detail-info"><span className="eyebrow">{listing.listing_type==='BUNDLE'?'CURATED BUNDLE':'ONE-OF-A-KIND FIND'}</span><h1>{listing.title}</h1><div className="detail-price">{money(listing.price_cents)}</div><p className="detail-description">{listing.description}</p><div className="detail-facts">{listing.items?.map(i=><div key={i.id}><span>{i.title}</span><strong>{i.category} · {i.size} · {i.condition}</strong></div>)}</div><div className="seller-card"><div className="seller-avatar">{listing.seller_name?.[0]}</div><div><small>LISTED BY</small><strong>{listing.seller_name}</strong></div><ShieldCheck size={19}/></div>{error&&<div className="notice error">{error}</div>}<button className="dark-button purchase-button" onClick={buy} disabled={busy||listing.status!=='ACTIVE'}><ShoppingBag size={18}/>{busy?'Processing…':listing.status==='ACTIVE'?'Purchase this piece':'No longer available'}</button><p className="safe-note">Each piece is unique. Once purchased, it cannot be bought by someone else.</p><div className="bundle-explain"><Package size={18}/><span>Buying a bundle? Every piece is reserved together. If one is unavailable, the entire purchase is cancelled.</span></div></div></div></main>;
+}
